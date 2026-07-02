@@ -37,16 +37,30 @@ class MiniPlayer(ctk.CTkFrame):
         self._on_expand = on_expand
         self._art_widget = None
         self._updating_slider = False
+        self._current_song_id = None  # Track to avoid re-creating art every tick
 
         # ── Left: Album Art + Song Info ──────────────────────────
         left_frame = ctk.CTkFrame(self, fg_color="transparent")
         left_frame.grid(row=0, column=0, sticky="nsw", padx=(12, 0))
 
-        self._art_frame = ctk.CTkFrame(left_frame, fg_color="transparent", width=50, height=50)
-        self._art_frame.pack(side="left", padx=(0, 10), pady=14)
+        # Art container with glow effect
+        self._art_container = ctk.CTkFrame(left_frame, fg_color="transparent", width=54, height=54)
+        self._art_container.pack(side="left", padx=(0, 10), pady=12)
+        self._art_container.pack_propagate(False)
+
+        self._art_glow = ctk.CTkFrame(
+            self._art_container,
+            fg_color=Theme.with_alpha(Theme.PRIMARY, 0.15),
+            corner_radius=12, width=54, height=54,
+        )
+        self._art_glow.place(relx=0.5, rely=0.5, anchor="center")
+        self._art_glow.lower()
+
+        self._art_frame = ctk.CTkFrame(self._art_container, fg_color="transparent", width=50, height=50)
+        self._art_frame.place(relx=0.5, rely=0.5, anchor="center")
         self._art_frame.pack_propagate(False)
 
-        info_frame = ctk.CTkFrame(left_frame, fg_color="transparent", width=200)
+        info_frame = ctk.CTkFrame(left_frame, fg_color="transparent", width=220)
         info_frame.pack(side="left")
         info_frame.pack_propagate(False)
 
@@ -239,6 +253,34 @@ class MiniPlayer(ctk.CTkFrame):
         elif mode == RepeatMode.ONE:
             self._repeat_btn.configure(text="🔂", text_color=Theme.PRIMARY_LIGHT)
 
+    def _update_album_art(self, song):
+        """Update album art only when the song actually changes."""
+        song_id = song.id if song else None
+        if song_id == self._current_song_id:
+            return
+        self._current_song_id = song_id
+
+        # Destroy old art widget
+        for widget in self._art_frame.winfo_children():
+            widget.destroy()
+
+        if song:
+            self._art_widget = AlbumArt(
+                self._art_frame,
+                art_data=song.album_art_data,
+                size=46,
+                title=song.title,
+                corner_radius=8,
+            )
+            self._art_widget.pack(expand=True)
+            self._art_widget.configure(cursor="hand2")
+            self._art_widget.bind("<Button-1>", self._handle_expand)
+            # Show glow when playing
+            self._art_glow.configure(fg_color=Theme.with_alpha(Theme.PRIMARY, 0.20))
+        else:
+            self._art_widget = None
+            self._art_glow.configure(fg_color="transparent")
+
     def update_display(self):
         """Update everything to reflect current playback state."""
         song = self._player.current_song
@@ -250,10 +292,14 @@ class MiniPlayer(ctk.CTkFrame):
             self._elapsed_label.configure(text="--:--")
             self._total_label.configure(text="--:--")
             self._progress_slider.set(0)
+            self._update_album_art(None)
             return
 
-        self._title_label.configure(text=song.title)
-        self._artist_label.configure(text=song.artist)
+        # Truncate long titles
+        title = song.title if len(song.title) <= 35 else song.title[:32] + "…"
+        artist = song.artist if len(song.artist) <= 40 else song.artist[:37] + "…"
+        self._title_label.configure(text=title)
+        self._artist_label.configure(text=artist)
 
         # Play/Pause
         self._play_btn.configure(text="⏸" if self._player.is_playing else "▶")
@@ -269,17 +315,5 @@ class MiniPlayer(ctk.CTkFrame):
 
         self._update_control_states()
 
-        # Album art
-        for widget in self._art_frame.winfo_children():
-            widget.destroy()
-
-        self._art_widget = AlbumArt(
-            self._art_frame,
-            art_data=song.album_art_data,
-            size=46,
-            title=song.title,
-            corner_radius=8,
-        )
-        self._art_widget.pack(expand=True)
-        self._art_widget.configure(cursor="hand2")
-        self._art_widget.bind("<Button-1>", self._handle_expand)
+        # Update album art only when song changes
+        self._update_album_art(song)

@@ -26,6 +26,11 @@ class Theme:
     SIDEBAR_ACTIVE  = "#201840"
     SUCCESS         = "#6FCF97"
     DANGER          = "#EB5757"
+    PLAYER_BG       = "#140C28"
+    GLOW_PRIMARY    = "#5E3A9A40"
+    CARD_HOVER      = "#1E1E35"
+    DUPLICATE_WARN  = "#F2994A"
+    PLAYING_DOT     = "#6FCF97"
 
     # ── Gradient stops (for canvas-based gradients) ──────────────────
     GRADIENT_PRIMARY = ("#7C5CBF", "#BF5CA0")

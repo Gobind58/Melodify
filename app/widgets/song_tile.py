@@ -19,6 +19,7 @@ class SongTile(ctk.CTkFrame):
         master,
         song: Song,
         is_playing: bool = False,
+        track_number: int = 0,
         on_tap: Optional[Callable] = None,
         playlists: Optional[List[Playlist]] = None,
         on_add_to_playlist: Optional[Callable[[str, str], None]] = None,
@@ -61,6 +62,33 @@ class SongTile(ctk.CTkFrame):
         self.bind("<Button-1>", self._handle_click)
         self.bind("<Button-3>", self._show_context_menu)
 
+        # ── Track Number / Playing Indicator ─────────────────────
+        if track_number > 0 or is_playing:
+            indicator_frame = ctk.CTkFrame(self, fg_color="transparent", width=32)
+            indicator_frame.grid(row=0, column=0, padx=(8, 0), pady=10)
+            indicator_frame.pack_propagate(False)
+            indicator_frame.bind("<Button-1>", self._handle_click)
+
+            if is_playing:
+                # Animated-look playing dot
+                dot = ctk.CTkFrame(
+                    indicator_frame,
+                    fg_color=Theme.PLAYING_DOT,
+                    width=8, height=8, corner_radius=4,
+                )
+                dot.pack(expand=True)
+            else:
+                ctk.CTkLabel(
+                    indicator_frame,
+                    text=str(track_number),
+                    text_color=Theme.TEXT_HINT,
+                    font=(Theme.FONT_FAMILY, Theme.FONT_SIZE_SM),
+                ).pack(expand=True)
+
+            art_col = 1
+        else:
+            art_col = 0
+
         # ── Album Art ────────────────────────────────────────────
         self._art = AlbumArt(
             self,
@@ -69,13 +97,16 @@ class SongTile(ctk.CTkFrame):
             title=song.title,
             corner_radius=8,
         )
-        self._art.grid(row=0, column=0, padx=(10, 8), pady=10)
+        self._art.grid(row=0, column=art_col, padx=(10 if art_col == 0 else 4, 8), pady=10)
         self._art.bind("<Button-1>", self._handle_click)
         self._art.bind("<Button-3>", self._show_context_menu)
 
+        info_col = art_col + 1
+        self.grid_columnconfigure(info_col, weight=1)
+
         # ── Info ─────────────────────────────────────────────────
         info_frame = ctk.CTkFrame(self, fg_color="transparent")
-        info_frame.grid(row=0, column=1, sticky="nsew", pady=10)
+        info_frame.grid(row=0, column=info_col, sticky="nsew", pady=10)
         info_frame.bind("<Button-1>", self._handle_click)
         info_frame.bind("<Button-3>", self._show_context_menu)
 
@@ -106,7 +137,7 @@ class SongTile(ctk.CTkFrame):
 
         # ── Right side (duration + optional remove) ──────────────
         right_frame = ctk.CTkFrame(self, fg_color="transparent")
-        right_frame.grid(row=0, column=2, padx=(0, 8))
+        right_frame.grid(row=0, column=info_col + 1, padx=(0, 8))
 
         self._duration_label = ctk.CTkLabel(
             right_frame,
@@ -188,7 +219,7 @@ class SongTile(ctk.CTkFrame):
             menu.grab_release()
 
     def _setup_hover(self):
-        hover_color = Theme.with_alpha(Theme.PRIMARY, 0.06)
+        hover_color = Theme.CARD_HOVER
 
         def on_enter(e):
             self.configure(fg_color=hover_color)

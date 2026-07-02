@@ -13,9 +13,10 @@ class Sidebar(ctk.CTkFrame):
     """Vertical sidebar with navigation items, playlists, and action buttons."""
 
     NAV_ITEMS = [
-        {"key": "home",   "label": "Home",   "icon": "🏠"},
-        {"key": "search", "label": "Search", "icon": "🔍"},
-        {"key": "queue",  "label": "Queue",  "icon": "🎵"},
+        {"key": "home",       "label": "Home",       "icon": "🏠"},
+        {"key": "search",     "label": "Search",     "icon": "🔍"},
+        {"key": "queue",      "label": "Queue",      "icon": "🎵"},
+        {"key": "duplicates", "label": "Duplicates", "icon": "🔄"},
     ]
 
     def __init__(
@@ -139,12 +140,19 @@ class Sidebar(ctk.CTkFrame):
         self._update_nav_highlight()
 
     def _create_nav_button(self, key: str, icon: str, label: str) -> ctk.CTkButton:
-        """Create a sidebar navigation button."""
+        """Create a sidebar navigation button with active accent indicator."""
+        wrapper = ctk.CTkFrame(self, fg_color="transparent", height=42)
+        wrapper.pack_propagate(False)
+
+        # Left accent bar (hidden by default)
+        accent = ctk.CTkFrame(wrapper, fg_color="transparent", width=3, corner_radius=2)
+        accent.pack(side="left", fill="y", padx=(4, 0), pady=6)
+
         btn = ctk.CTkButton(
-            self,
+            wrapper,
             text=f"  {icon}   {label}",
             fg_color="transparent",
-            hover_color=Theme.SIDEBAR_HOVER,
+            hover_color=Theme.CARD_HOVER,
             text_color=Theme.TEXT_SECONDARY,
             font=(Theme.FONT_FAMILY, Theme.FONT_SIZE_MD),
             anchor="w",
@@ -152,7 +160,11 @@ class Sidebar(ctk.CTkFrame):
             corner_radius=10,
             command=lambda: self._handle_nav(key),
         )
-        return btn
+        btn.pack(side="left", fill="both", expand=True, padx=(2, 4))
+
+        wrapper._accent = accent
+        wrapper._btn = btn
+        return wrapper
 
     def _create_playlist_button(self, playlist: Playlist) -> ctk.CTkButton:
         """Create a sidebar playlist entry."""
@@ -192,17 +204,21 @@ class Sidebar(ctk.CTkFrame):
 
     def _update_nav_highlight(self):
         """Update visual state of all nav buttons."""
-        for key, btn in self._nav_buttons.items():
+        for key, wrapper in self._nav_buttons.items():
+            btn = wrapper._btn
+            accent = wrapper._accent
             if key == self._current_key:
                 btn.configure(
                     fg_color=Theme.SIDEBAR_ACTIVE,
                     text_color=Theme.PRIMARY_LIGHT,
                 )
+                accent.configure(fg_color=Theme.PRIMARY_LIGHT)
             else:
                 btn.configure(
                     fg_color="transparent",
                     text_color=Theme.TEXT_SECONDARY,
                 )
+                accent.configure(fg_color="transparent")
 
         for pid, btn in self._playlist_buttons.items():
             full_key = f"playlist:{pid}"

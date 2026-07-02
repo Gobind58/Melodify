@@ -19,6 +19,7 @@ from app.screens.search_screen import SearchScreen
 from app.screens.queue_screen import QueueScreen
 from app.screens.player_screen import PlayerScreen
 from app.screens.playlist_screen import PlaylistScreen
+from app.screens.duplicates_screen import DuplicatesScreen
 from app.widgets.sidebar import Sidebar
 from app.widgets.mini_player import MiniPlayer
 
@@ -188,6 +189,12 @@ class MelodifyApp(ctk.CTk):
             playlists=self._playlist_mgr.playlists,
             on_queue_tap=self._play_from_queue,
             on_add_to_playlist=self._add_song_to_playlist,
+        )
+
+        self._screens["duplicates"] = DuplicatesScreen(
+            self._content_pane,
+            songs=self._songs,
+            on_delete=self._delete_songs,
         )
 
         self._screens["player"] = PlayerScreen(
@@ -365,6 +372,42 @@ class MelodifyApp(ctk.CTk):
                 self._loading_label.configure(text=f"Scanning {os.path.basename(folder)}…")
             self._scan_thread = threading.Thread(target=self._scan_music, daemon=True)
             self._scan_thread.start()
+
+    def _delete_songs(self, paths):
+        """Delete song files from disk and rescan the library."""
+        deleted = 0
+        for path in paths:
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+                    deleted += 1
+            except OSError as e:
+                print(f"Error deleting {path}: {e}")
+
+        if deleted > 0:
+            # Rescan library
+            self._scan_thread = threading.Thread(target=self._rescan_after_delete, daemon=True)
+            self._scan_thread.start()
+
+    def _rescan_after_delete(self):
+        """Rescan music and update all screens."""
+        self._songs = scan_multiple_directories(self._music_dirs)
+        self.after(0, self._on_rescan_complete)
+
+    def _on_rescan_complete(self):
+        """Update all screens after rescan."""
+        # Update songs in all screens that hold them
+        for key, screen in self._screens.items():
+            if hasattr(screen, 'update_songs'):
+                screen.update_songs(self._songs)
+            if hasattr(screen, '_songs'):
+                screen._songs = self._songs
+            if hasattr(screen, '_all_songs'):
+                screen._all_songs = self._songs
+
+        # Refresh current screen
+        if self._current_screen in self._screens:
+            self._screens[self._current_screen].refresh()
 
     # ═══════════════════════════════════════════════════════════════
     # CALLBACKS

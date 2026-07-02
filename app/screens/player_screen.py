@@ -21,11 +21,12 @@ class PlayerScreen(ctk.CTkFrame):
         on_back: Optional[Callable] = None,
         **kwargs,
     ):
-        super().__init__(master, fg_color="#140C28", corner_radius=0, **kwargs)
+        super().__init__(master, fg_color=Theme.PLAYER_BG, corner_radius=0, **kwargs)
 
         self._player = player
         self._on_back = on_back
         self._updating_slider = False
+        self._current_song_id = None  # Track to avoid redundant art updates
 
         # ── Top Bar ──────────────────────────────────────────────
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=50)
@@ -60,9 +61,23 @@ class PlayerScreen(ctk.CTkFrame):
         content.grid_columnconfigure(1, weight=1)
         content.grid_rowconfigure(0, weight=1)
 
-        # Left: Album Art
+        # Left: Album Art with glow
         self._art_frame = ctk.CTkFrame(content, fg_color="transparent")
         self._art_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 20))
+
+        # Glow behind album art
+        self._art_glow = ctk.CTkFrame(
+            self._art_frame,
+            fg_color=Theme.with_alpha(Theme.PRIMARY, 0.10),
+            corner_radius=28,
+            width=Theme.ART_SIZE_LG + 20,
+            height=Theme.ART_SIZE_LG + 20,
+        )
+        self._art_glow.pack(expand=True)
+        self._art_glow.pack_propagate(False)
+
+        self._art_inner = ctk.CTkFrame(self._art_glow, fg_color="transparent")
+        self._art_inner.pack(expand=True)
 
         self._art_widget = None
         self._update_album_art()
@@ -223,12 +238,18 @@ class PlayerScreen(ctk.CTkFrame):
             self._on_back()
 
     def _update_album_art(self):
-        for widget in self._art_frame.winfo_children():
+        song = self._player.current_song
+        song_id = song.id if song else None
+
+        if song_id == self._current_song_id:
+            return
+        self._current_song_id = song_id
+
+        for widget in self._art_inner.winfo_children():
             widget.destroy()
 
-        song = self._player.current_song
         self._art_widget = AlbumArt(
-            self._art_frame,
+            self._art_inner,
             art_data=song.album_art_data if song else None,
             size=Theme.ART_SIZE_LG,
             title=song.title if song else "",
@@ -291,5 +312,6 @@ class PlayerScreen(ctk.CTkFrame):
         self._update_controls()
 
     def on_song_changed(self):
+        self._current_song_id = None  # Force art update
         self._update_album_art()
         self.refresh()

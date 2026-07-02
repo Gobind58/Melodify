@@ -105,7 +105,7 @@ class HomeScreen(ctk.CTkFrame):
 
     def _build_song_list(self):
         """Build the scrollable song list."""
-        # Section header with count
+        # Section header with count and play all
         header_frame = ctk.CTkFrame(self, fg_color="transparent")
         header_frame.pack(fill="x", padx=24, pady=(16, 8))
 
@@ -117,6 +117,20 @@ class HomeScreen(ctk.CTkFrame):
             anchor="w",
         )
         section_header.pack(side="left")
+
+        # Play all button
+        play_all_btn = ctk.CTkButton(
+            header_frame,
+            text="▶  Play All",
+            width=100, height=30,
+            fg_color=Theme.PRIMARY,
+            hover_color=Theme.PRIMARY_LIGHT,
+            text_color="white",
+            font=(Theme.FONT_FAMILY, Theme.FONT_SIZE_SM, "bold"),
+            corner_radius=15,
+            command=lambda: self._handle_song_tap(0) if self._songs else None,
+        )
+        play_all_btn.pack(side="right", padx=(8, 0))
 
         count_label = ctk.CTkLabel(
             header_frame,
@@ -142,6 +156,7 @@ class HomeScreen(ctk.CTkFrame):
                 self._scroll_frame,
                 song=song,
                 is_playing=is_playing,
+                track_number=i + 1,
                 on_tap=lambda idx=i: self._handle_song_tap(idx),
                 playlists=self._playlists,
                 on_add_to_playlist=self._on_add_to_playlist,
